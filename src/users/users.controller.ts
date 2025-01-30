@@ -1,24 +1,15 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
-import { AuthGuard } from '@nestjs/passport';
+import { UsersDto } from './dto/users.dto';
+import { Users } from './entity/users.entity';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
-  @Get('getOne')
-  @UseGuards(AuthGuard('keycloak'), RolesGuard)
-  @Roles('Administrator')
-  getStringOne(): string {
-    return this.userService.getStringOne();
-  }
-
-  @Get('getTwo')
-  @UseGuards(AuthGuard('keycloak'), RolesGuard)
-  @Roles('Investor')
-  getStringTwo(): string {
-    return this.userService.getStringTwo();
+  @Post('register')
+  async createUser(@Body() userDto: UsersDto): Promise<Users> {
+    console.log('Received data:', userDto);
+    return this.userService.createUsers(userDto);
   }
 }
