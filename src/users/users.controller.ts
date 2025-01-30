@@ -12,4 +12,11 @@ export class UsersController {
     console.log('Received data:', userDto);
     return this.userService.createUsers(userDto);
   }
+
+  @Post('login')
+  async login(
+    @Body() loginDto: { username: string; password: string },
+  ): Promise<{ access_token: string; user: Users }> {
+    return this.userService.login(loginDto.username, loginDto.password);
+  }
 }

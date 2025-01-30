@@ -1,4 +1,9 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Users } from './entity/users.entity';
 import { Repository } from 'typeorm';
@@ -83,7 +88,12 @@ export class UsersService {
 
       const userId = createUserResponse.headers.location.split('/').pop();
 
-      const assignedRoleId = await this.getRoleId(keycloakUrl, realm, accessToken, userDto.role);
+      const assignedRoleId = await this.getRoleId(
+        keycloakUrl,
+        realm,
+        accessToken,
+        userDto.role,
+      );
 
       await axios.post(
         `${keycloakUrl}/admin/realms/${realm}/users/${userId}/role-mappings/realm`,
@@ -135,5 +145,45 @@ export class UsersService {
       throw new Error('HR Role Not Found In Keycloak');
     }
     return role.id;
+  }
+
+  async login(
+    username: string,
+    password: string,
+  ): Promise<{ access_token: string; user: Users }> {
+    const keycloakUrl = 'http://localhost:8080';
+    const realm = 'Invest';
+    const clientId = 'investLink';
+    const clientSecret = 'JmjxcGqnWhbck4ffV4XOx1qe118X2ylf';
+    try {
+      const loginResponse = await axios.post(
+        `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`,
+        new URLSearchParams({
+          grant_type: 'password',
+          client_id: clientId,
+          client_secret: clientSecret,
+          username: username,
+          password: password,
+        }),
+        {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        },
+      );
+      const user = await this.usersRepository.findOne({ where: { username } });
+      if (!user) {
+        throw new UnauthorizedException('User Not Found');
+      }
+
+      return {
+        access_token: loginResponse.data.access_token,
+        user: user,
+      };
+    } catch (error) {
+      console.error('Login error:', error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      throw new UnauthorizedException('Login failed');
+    }
   }
 }
