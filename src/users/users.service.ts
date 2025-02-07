@@ -68,6 +68,9 @@ export class UsersService {
           enabled: true,
           firstName: userDto.firstName,
           lastName: userDto.lastName,
+          attributes: {
+            Phone: userDto.phone,
+          },
           credentials: [
             {
               type: 'password',
