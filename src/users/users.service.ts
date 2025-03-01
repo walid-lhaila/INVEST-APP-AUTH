@@ -36,6 +36,15 @@ export class UsersService {
     }
   }
 
+  async getUserByUsername(username: string): Promise<Users> {
+    const user = await this.usersRepository.findOne({ where: { username } });
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    return user;
+  }
+
+
   private async createUsersInKeycloak(userDto: UsersDto): Promise<void> {
     const keycloakUrl = 'http://localhost:8080';
     const realm = 'Invest';
@@ -145,7 +154,7 @@ export class UsersService {
 
     const role = rolesResponse.data.find((r) => r.name === roleName);
     if (!role) {
-      throw new Error('HR Role Not Found In Keycloak');
+      throw new Error('Role Not Found In Keycloak');
     }
     return role.id;
   }

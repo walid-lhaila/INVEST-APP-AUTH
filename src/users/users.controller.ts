@@ -20,4 +20,10 @@ export class UsersController {
   ): Promise<{ access_token: string; user: Users }> {
     return this.userService.login(loginDto.username, loginDto.password);
   }
+
+  @MessagePattern({ cmd: 'getUserByUsername' })
+  async getUserByUsername(@Body() data: { username: string }): Promise<Users> {
+    console.log('Received username:', data.username);
+    return this.userService.getUserByUsername(data.username);
+  }
 }
