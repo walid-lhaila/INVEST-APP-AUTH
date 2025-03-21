@@ -9,28 +9,49 @@ import {
   HttpStatus,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
 jest.mock('axios');
 
 describe('UsersService', () => {
   let service: UsersService;
+  let repository: Repository<Users>;
+  let configService: ConfigService;
+
+  const mockUser = {
+    id: 1,
+    username: 'testUser',
+    password: 'hashedPassword',
+    email: 'test@gmail.com',
+    firstName: 'test',
+    lastName: 'user',
+    phone: '09876543',
+    role: 'Investor',
+    fieldOfInterest: 'tech',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
+        ConfigService,
         {
           provide: getRepositoryToken(Users),
           useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            findOne: jest.fn(),
+            create: jest.fn().mockImplementation((dto) => dto),
+            save: jest.fn().mockResolvedValue(mockUser),
+            findOne: jest.fn().mockResolvedValue(mockUser),
           },
         },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
+    repository = module.get<Repository<Users>>(getRepositoryToken(Users));
+    configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
@@ -71,19 +92,6 @@ describe('UsersService', () => {
 
       (axios.post as jest.Mock).mockResolvedValueOnce({});
 
-      const mockUser = {
-        ...userDto,
-        password: 'hashedpassword',
-        id: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        fieldOfInterest: userDto.fieldOfInterest ?? '',
-      };
-
-      jest
-        .spyOn(service['usersRepository'], 'save')
-        .mockResolvedValue(mockUser);
-
       const result = await service.createUsers(userDto);
 
       expect(result).toEqual(mockUser);
@@ -110,14 +118,14 @@ describe('UsersService', () => {
       });
 
       (axios.post as jest.Mock).mockRejectedValueOnce(
-        new Error('Keycloak error'),
+          new Error('Keycloak error'),
       );
 
       await expect(service.createUsers(userDto)).rejects.toThrow(
-        new HttpException(
-          'Failed To Create User',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        ),
+          new HttpException(
+              'Failed To Create User',
+              HttpStatus.INTERNAL_SERVER_ERROR,
+          ),
       );
     });
   });
@@ -129,29 +137,16 @@ describe('UsersService', () => {
         password: 'testPassword',
       };
 
-      const mockUser = {
-        id: 1,
-        username: 'testUser',
-        password: 'hashedPassword',
-        email: 'test@gmail.com',
-        firstName: 'test',
-        lastName: 'user',
-        phone: '09876543',
-        role: 'Investor',
-        fieldOfInterest: 'tech',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
       (axios.post as jest.Mock).mockResolvedValueOnce({
         data: { access_token: 'mockAccessToken' },
       });
 
-      jest.spyOn(service['usersRepository'], 'findOne').mockResolvedValue(null);
+      const result = await service.login(loginDto.username, loginDto.password);
 
-      await expect(
-        service.login(loginDto.username, loginDto.password),
-      ).rejects.toThrow(new UnauthorizedException('Login failed'));
+      expect(result).toEqual({
+        access_token: 'mockAccessToken',
+        user: mockUser,
+      });
     });
 
     it('should throw an UnauthorizedException if the credentials are invalid', async () => {
@@ -165,49 +160,31 @@ describe('UsersService', () => {
       });
 
       await expect(
-        service.login(loginDto.username, loginDto.password),
+          service.login(loginDto.username, loginDto.password),
       ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
     });
   });
 
   describe('getUserByUsername', () => {
     it('should return a user if the username exists', async () => {
-      const mockUser = {
-        id: 1,
-        username: 'testUser',
-        password: 'hashedPassword',
-        email: 'test@gmail.com',
-        firstName: 'test',
-        lastName: 'user',
-        phone: '098765432',
-        role: 'Investor',
-        fieldOfInterest: 'tech',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      jest
-        .spyOn(service['usersRepository'], 'findOne')
-        .mockResolvedValue(mockUser as Users);
-
       const result = await service.getUserByUsername('testUser');
 
       expect(result).toEqual(mockUser);
-      expect(service['usersRepository'].findOne).toHaveBeenCalledWith({
+      expect(repository.findOne).toHaveBeenCalledWith({
         where: { username: 'testUser' },
       });
     });
 
     it('should throw an HttpException if the username does not exist', async () => {
-      jest.spyOn(service['usersRepository'], 'findOne').mockResolvedValue(null);
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
 
       await expect(
-        service.getUserByUsername('nonexistentuser'),
+          service.getUserByUsername('nonexistentuser'),
       ).rejects.toThrow(
-        new HttpException('User not found', HttpStatus.NOT_FOUND),
+          new HttpException('User not found', HttpStatus.NOT_FOUND),
       );
 
-      expect(service['usersRepository'].findOne).toHaveBeenCalledWith({
+      expect(repository.findOne).toHaveBeenCalledWith({
         where: { username: 'nonexistentuser' },
       });
     });

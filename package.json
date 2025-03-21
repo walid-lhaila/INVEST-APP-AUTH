@@ -29,8 +29,10 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/sequelize": "^11.0.0",
     "@nestjs/typeorm": "^11.0.0",
+    "axios": "^1.8.3",
     "bcrypt": "^5.1.1",
     "class-validator": "^0.14.1",
+    "crypto": "^1.0.1",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
     "jwks-rsa": "^3.1.0",
@@ -42,7 +44,7 @@
     "rxjs": "^7.8.1",
     "sequelize": "^6.37.5",
     "sequelize-typescript": "^2.1.6",
-    "typeorm": "^0.3.20",
+    "typeorm": "^0.3.21",
     "zod": "^3.24.1"
   },
   "devDependencies": {

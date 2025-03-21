@@ -2,22 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
 import { passportJwtSecret } from 'jwks-rsa';
+import {ConfigService} from "@nestjs/config";
 
 @Injectable()
 export class KeycloakStrategy extends PassportStrategy(Strategy, 'keycloak') {
-  constructor() {
+  constructor(private config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       audience: ['account', 'investLink', 'realm-management'],
-      issuer: 'http://localhost:8080/realms/Invest',
+      issuer: config.get('KEYCLOAK_REALME_ISSUER'),
       algorithms: ['RS256'],
       secretOrKeyProvider: passportJwtSecret({
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri:
-          'http://localhost:8080/realms/Invest/protocol/openid-connect/certs',
+        jwksUri: config.get<string>('KEYCLOAK_CERT_URI', 'NULL'),
       }),
     });
   }

@@ -10,12 +10,12 @@ async function bootstrap() {
     {
       transport: Transport.TCP,
       options: {
-        host: '127.0.0.1',
-        port: 3000,
+        host: '0.0.0.0',
+        port: 3003,
       },
     },
   );
   await app.listen();
-  console.log('AUTHENTICATION SERVICE is running on: http://localhost:3000');
+  console.log('AUTHENTICATION SERVICE is running on: http://localhost:3003');
 }
 bootstrap();

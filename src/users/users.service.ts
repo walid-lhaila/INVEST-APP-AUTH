@@ -7,21 +7,25 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Users } from './entity/users.entity';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { UsersDto } from './dto/users.dto';
 import axios from 'axios';
+import {ConfigService} from "@nestjs/config";
 
 @Injectable()
 export class UsersService {
-  constructor(
+  private keycloakUrl = this.config.get('KEYCLOAK_URL');
+  private realm = this.config.get('KEYCLOAK_REALM');
+  private clientId = this.config.get('KEYCLOAK_CLIENT_ID');
+  private clientSecret = this.config.get('KEYCLOAK_CLIENT_SECRET');
+
+  constructor(private config: ConfigService,
     @InjectRepository(Users) private usersRepository: Repository<Users>,
   ) {}
 
   async createUsers(userDto: UsersDto): Promise<Users> {
-    const hashedPassword = await bcrypt.hash(userDto.password, 10);
+    // userDto.password = '';
     const user = this.usersRepository.create({
       ...userDto,
-      password: hashedPassword,
     });
 
     try {
@@ -44,21 +48,15 @@ export class UsersService {
     return user;
   }
 
-
   private async createUsersInKeycloak(userDto: UsersDto): Promise<void> {
-    const keycloakUrl = 'http://localhost:8080';
-    const realm = 'Invest';
-    const clientId = 'investLink';
-    const clientSecret = 'JmjxcGqnWhbck4ffV4XOx1qe118X2ylf';
-
     try {
       console.log('Attempting to get access token...');
       const tokenResponse = await axios.post(
-        `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`,
+        `${this.keycloakUrl}/realms/${this.realm}/protocol/openid-connect/token`,
         new URLSearchParams({
           grant_type: 'client_credentials',
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
         }),
         {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -70,7 +68,7 @@ export class UsersService {
 
       console.log('Attempting to create user in Keycloak...');
       const createUserResponse = await axios.post(
-        `${keycloakUrl}/admin/realms/${realm}/users`,
+        `${this.keycloakUrl}/admin/realms/${this.realm}/users`,
         {
           username: userDto.username,
           email: userDto.email,
@@ -101,14 +99,14 @@ export class UsersService {
       const userId = createUserResponse.headers.location.split('/').pop();
 
       const assignedRoleId = await this.getRoleId(
-        keycloakUrl,
-        realm,
+        this.keycloakUrl,
+        this.realm,
         accessToken,
         userDto.role,
       );
 
       await axios.post(
-        `${keycloakUrl}/admin/realms/${realm}/users/${userId}/role-mappings/realm`,
+        `${this.keycloakUrl}/admin/realms/${this.realm}/users/${userId}/role-mappings/realm`,
         [{ id: assignedRoleId, name: userDto.role }],
         {
           headers: {
@@ -144,7 +142,7 @@ export class UsersService {
     roleName: string,
   ): Promise<string> {
     const rolesResponse = await axios.get(
-      `${keycloakUrl}/admin/realms/${realm}/roles`,
+      `${this.keycloakUrl}/admin/realms/${this.realm}/roles`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -163,17 +161,13 @@ export class UsersService {
     username: string,
     password: string,
   ): Promise<{ access_token: string; user: Users }> {
-    const keycloakUrl = 'http://localhost:8080';
-    const realm = 'Invest';
-    const clientId = 'investLink';
-    const clientSecret = 'JmjxcGqnWhbck4ffV4XOx1qe118X2ylf';
     try {
       const loginResponse = await axios.post(
-        `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`,
+        `${this.keycloakUrl}/realms/${this.realm}/protocol/openid-connect/token`,
         new URLSearchParams({
           grant_type: 'password',
-          client_id: clientId,
-          client_secret: clientSecret,
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
           username: username,
           password: password,
         }),
